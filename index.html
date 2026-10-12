@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AURELIA — Scene 02 | Drone Fly-In Scroll Test</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0d1013; color: #f2eee7; font-family: Arial, Helvetica, sans-serif; }
+  .scroll-stage { height: 360vh; position: relative; }
+  .screen { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; background: #25303a; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .shade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(7,12,18,.36), transparent 36%, rgba(8,12,18,.63)); pointer-events: none; }
+  .navbar { position: absolute; z-index: 2; top: 0; left: 0; right: 0; padding: 30px clamp(20px,5vw,72px); display: flex; justify-content: space-between; align-items: center; }
+  .brand { font: 600 14px Georgia, 'Times New Roman', serif; letter-spacing: .35em; }
+  .pill { border: 1px solid #d9ba80; padding: 11px 17px; font-size: 10px; letter-spacing: .23em; }
+  .copy { position: absolute; left: clamp(20px,7vw,110px); bottom: 13%; z-index: 2; max-width: min(790px,80vw); text-shadow: 0 2px 16px #0007; transition: opacity .12s linear; }
+  .eyebrow { font-size: clamp(10px,1vw,13px); letter-spacing: .3em; color: #d8bc90; text-transform: uppercase; }
+  h1 { margin: 14px 0 18px; font: normal clamp(42px,6vw,100px)/1.01 Georgia, 'Times New Roman', serif; letter-spacing: -.03em; }
+  .sub { max-width: 480px; font-size: clamp(13px,1.2vw,16px); line-height: 1.6; opacity: .9; }
+  .bottom { position: absolute; z-index: 2; bottom: 24px; left: clamp(20px,5vw,72px); right: clamp(20px,5vw,72px); display: flex; justify-content: space-between; align-items: center; font-size: 10px; letter-spacing: .22em; color: #ead8c2; }
+  .bar { height: 2px; width: 170px; background: #fff4; position: relative; }
+  .bar-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: #dfbc83; }
+  .end { min-height: 50vh; padding: 100px 8vw; display: flex; flex-direction: column; justify-content: center; gap: 15px; }
+  .end h2 { font: normal clamp(32px,4vw,60px) Georgia, serif; margin: 0; }
+  .end p { max-width: 680px; line-height: 1.65; opacity: .8; margin: 0; }
+  .status { position: absolute; top: 80px; left: clamp(20px,5vw,72px); z-index: 2; font-size: 11px; color: #fff9; }
+  @media (max-width: 600px) { .navbar { padding-top: 20px; } .copy { bottom: 20%; max-width: 90vw; } .bar { width: 80px; } .sub { max-width: 290px; } }
+  @media (prefers-reduced-motion: reduce) { .scroll-stage { height: 110vh; } }
+</style>
+</head>
+<body>
+  <main>
+    <section id="scene02" class="scroll-stage" aria-label="Aurelia scene 02 cinematic drone fly-in">
+      <div class="screen">
+        <canvas id="scene-canvas" aria-label="Frame sequence showing a luxury tower as the camera approaches"></canvas>
+        <div class="shade"></div>
+        <div class="navbar"><span class="brand">A U R E L I A</span><span class="pill">SCENE 02</span></div>
+        <div class="status" id="status">Loading cinematic frames…</div>
+        <div class="copy" id="copy"><div class="eyebrow">02 / 09 · Drone Fly-In</div><h1>A closer look<br />at extraordinary.</h1><p class="sub">Discover architecture that brings a new perspective to elevated living.</p></div>
+        <div class="bottom"><span id="percent">SCROLL TO EXPLORE · 0%</span><div class="bar"><div class="bar-fill" id="bar-fill"></div></div></div>
+      </div>
+    </section>
+    <section class="end"><div class="eyebrow">Scene 02 complete</div><h2>Continue the journey.</h2><p>This standalone preview demonstrates a real scroll-controlled image sequence. In the full AURELIA site, Claude should preserve the working Scene 01 and add this section immediately afterwards.</p></section>
+  </main>
+<script>
+(() => {
+  const FRAME_COUNT = 96;
+  const path = (n) => `./frames/frame_${String(n).padStart(4, '0')}.webp`;
+  const canvas = document.getElementById('scene-canvas');
+  const ctx = canvas.getContext('2d', { alpha: false });
+  const section = document.getElementById('scene02');
+  const copy = document.getElementById('copy');
+  const status = document.getElementById('status');
+  const percent = document.getElementById('percent');
+  const bar = document.getElementById('bar-fill');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const cache = new Map(), requested = new Set();
+  let currentFrame = 0, progress = 0, frameTick = 0, inflight = 0;
+  const MAX_INFLIGHT = 5, MAX_CACHED = 32;
+  let pending = [];
+
+  function requestFrame(n) {
+    if (n < 0 || n >= FRAME_COUNT || cache.has(n) || requested.has(n) || pending.includes(n)) return;
+    pending.push(n);
+    pump();
+  }
+  function pump() {
+    while (inflight < MAX_INFLIGHT && pending.length) {
+      const n = pending.shift();
+      if (cache.has(n) || requested.has(n)) continue;
+      requested.add(n);
+      inflight++;
+      const img = new Image();
+      img.onload = () => {
+        cache.set(n, img);
+        inflight--;
+        requested.delete(n);
+        // Limit decoded-image memory usage. Keep the nearby frames whenever possible.
+        if (cache.size > MAX_CACHED) {
+          const farthest = [...cache.keys()].sort((a,b) => Math.abs(b-currentFrame)-Math.abs(a-currentFrame));
+          for (const key of farthest.slice(0, cache.size-MAX_CACHED)) cache.delete(key);
+        }
+        status.textContent = '';
+        draw();
+        pump();
+      };
+      img.onerror = () => { inflight--; requested.delete(n); status.textContent = `Could not load ${path(n)}. Check that the frames folder is next to this HTML file.`; pump(); };
+      img.src = path(n);
+    }
+  }
+  function primeFrames(n) {
+    // Focus preloading on the current position rather than downloading every frame at once.
+    pending = pending.filter(x => Math.abs(x-n) <= 10);
+    requestFrame(n);
+    for (let d=1; d<=7; d++) { requestFrame(n+d); requestFrame(n-d); }
+  }
+  function resize() {
+    const r = canvas.getBoundingClientRect(), ratio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(r.width * ratio);
+    canvas.height = Math.round(r.height * ratio);
+    draw();
+  }
+  function draw() {
+    if (!ctx) return;
+    let key = currentFrame;
+    if (!cache.has(key)) {
+      const keys = [...cache.keys()];
+      if (!keys.length) return;
+      key = keys.reduce((a,b) => Math.abs(a-currentFrame) <= Math.abs(b-currentFrame) ? a : b);
+    }
+    const img = cache.get(key), W=canvas.width, H=canvas.height;
+    const scale = Math.max(W/img.naturalWidth, H/img.naturalHeight);
+    const w=img.naturalWidth*scale, h=img.naturalHeight*scale;
+    ctx.drawImage(img,(W-w)/2,(H-h)/2,w,h);
+  }
+  function update() {
+    frameTick=0;
+    const rect=section.getBoundingClientRect();
+    const available=Math.max(1,section.offsetHeight-window.innerHeight);
+    progress = Math.max(0,Math.min(1,(-rect.top)/available));
+    if (reduceMotion.matches) progress = 0;
+    currentFrame=Math.round(progress*(FRAME_COUNT-1));
+    percent.textContent=`SCROLL TO EXPLORE · ${Math.round(progress*100)}%`;
+    bar.style.width=`${progress*100}%`;
+    copy.style.opacity=String(Math.max(.3,Math.min(1,1-progress*.65)));
+    copy.style.transform=`translateY(${-progress*18}px)`;
+    primeFrames(currentFrame);
+    draw();
+  }
+  function tick() { if (!frameTick) frameTick=requestAnimationFrame(update); }
+  window.addEventListener('scroll',tick,{passive:true});
+  window.addEventListener('resize',()=>{ resize(); tick(); },{passive:true});
+  window.addEventListener('orientationchange',()=>{ resize(); tick(); },{passive:true});
+  resize();
+  primeFrames(0);
+  update();
+})();
+</script>
+</body>
+</html>

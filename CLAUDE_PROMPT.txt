@@ -1,0 +1,26 @@
+AURELIA Scene 01 is approved, implemented and working. Preserve its layout, code, media URLs and scroll behavior.
+
+Now add Scene 02 — CINEMATIC DRONE FLY-IN — using REAL hosted WebP frames.
+
+Scene 02 frames base URL (replace this placeholder):
+[PASTE YOUR ACTUAL PUBLIC URL ENDING IN /scene02/frames/ HERE]
+
+The 96 files are named frame_0000.webp to frame_0095.webp (1280x720). The frames come from my 10-second video and must be displayed in ascending sequence. Do not use fake rendered buildings or still-image zooms.
+
+Implement Scene 02 as a standalone reusable React component placed directly AFTER existing Scene 01:
+- A fullscreen sticky/pinned scroll-controlled HTML Canvas section.
+- Scroll down advances the real frame sequence; scroll up reverses it.
+- Stop scroll = freeze at the correct frame.
+- Map this section's own scroll progress 0..1 to frames 0..95.
+- Render cover-cropped into the canvas with a device-pixel-ratio-aware backing resolution.
+- Preload frames progressively (prioritize the current position and neighboring frames) to limit memory use.
+- Show a graceful loading/error state and a poster fallback if any frames fail to load.
+- Use GSAP ScrollTrigger when supported or accurate native scroll position mapping.
+- On mobile, support touch-scroll and reduced-motion fallbacks.
+- Once Scene 01 ends, Scene 02 begins. Scrolling upwards from Scene 02 should return to Scene 01 without any broken pinning or large blank spaces.
+- Keep AURELIA branding, typography and navigation unchanged.
+- Add elegant overlay copy: "A closer look at extraordinary." and "02 / 09 · Drone Fly-In".
+- Do not touch the working Scene 01 or other already-approved sections.
+- Do not claim success until you have verified the frame URLs and the preview behavior; say explicitly if testing is not possible.
+
+First check that the URLs frame_0000.webp and frame_0095.webp resolve. Then update the EXISTING working React Artifact, not a new design document. Show me the updated interactive preview.
